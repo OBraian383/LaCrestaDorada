@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>La Cresta Dorada</title>
+<meta name="description" content="Ventas, egresos, fiados, cuentas corrientes y cierre de caja de La Cresta Dorada, compartidos en tiempo real.">
+<meta name="theme-color" content="#F3F5FA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1320" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cresta Dorada">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Concepto: cuaderno de almacén. Tinta azul para lo cobrado, roja para lo que se debe,
+   ámbar para lo que sale de la caja. Una columna pensada para el celular, con barra de pestañas abajo;
+   en pantallas anchas la libreta pasa a cuatro columnas. */
+:root{
+  --bg:#F3F5FA; --surface:#FFFFFF; --ink:#16213A; --ink-2:#56617B; --line:#D8DEEB;
+  --accent:#2447B8; --accent-ink:#FFFFFF; --accent-soft:#E5EBFA;
+  --debt:#B3312A; --debt-bg:#FBE8E6;
+  --ok:#23704A; --ok-bg:#E3F2EA;
+  --warn:#8A5A00; --warn-bg:#FFF3D1;
+  --rule:#DDE5F4; --margin:#E8A7A3;
+  --f-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1320; --surface:#161D2E; --ink:#E8ECF5; --ink-2:#9BA6BF; --line:#2A3450;
+    --accent:#86A4FF; --accent-ink:#0E1320; --accent-soft:#1D2848;
+    --debt:#FF8F86; --debt-bg:#3B1E1E;
+    --ok:#74D6A0; --ok-bg:#16301F;
+    --warn:#F2C26B; --warn-bg:#33290F;
+    --rule:#222C45; --margin:#7A3B3B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1320; --surface:#161D2E; --ink:#E8ECF5; --ink-2:#9BA6BF; --line:#2A3450;
+  --accent:#86A4FF; --accent-ink:#0E1320; --accent-soft:#1D2848;
+  --debt:#FF8F86; --debt-bg:#3B1E1E;
+  --ok:#74D6A0; --ok-bg:#16301F;
+  --warn:#F2C26B; --warn-bg:#33290F;
+  --rule:#222C45; --margin:#7A3B3B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{
+  margin:0; -webkit-tap-highlight-color:transparent;
+  background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.45;
+  padding-top:calc(10px + env(safe-area-inset-top,0px));
+  padding-bottom:calc(96px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.app{max-width:860px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.6rem;line-height:1.1}
+h2{font-size:1.2rem;line-height:1.2}
+h3{font-size:1rem}
+p{margin:0}
+button{font:inherit;color:inherit}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px 14px;flex-wrap:wrap;padding:6px 0 14px}
+.estado{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:.8rem;color:var(--ink-2)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-2);flex:none}
+.estado[data-s="ok"] .dot{background:var(--ok)}
+.estado[data-s="warn"] .dot{background:var(--warn)}
+.estado[data-s="err"] .dot{background:var(--debt)}
+.chip-deuda{background:var(--debt-bg);color:var(--debt);border-radius:10px;padding:6px 11px;font-size:.8rem;line-height:1.25}
+.chip-deuda b{font-family:var(--f-display);font-size:1.05rem;display:block;font-variant-numeric:tabular-nums}
+.panel{display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.muted{color:var(--ink-2)}
+.small{font-size:.82rem}
+label.lbl,.lbl{display:block;font-weight:600;font-size:.85rem;margin-bottom:6px}
+.lbl .muted{font-weight:400}
+input,select,textarea{
+  font:inherit;font-size:16px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0;
+}
+textarea{resize:vertical;line-height:1.35}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hoja{
+  line-height:26px;padding:4px 12px 4px 54px;min-height:216px;border-radius:12px;
+  background-color:var(--surface);
+  background-image:
+    linear-gradient(to right,transparent 42px,var(--margin) 42px,var(--margin) 43px,transparent 43px),
+    repeating-linear-gradient(to bottom,transparent 0,transparent 25px,var(--rule) 25px,var(--rule) 26px);
+  background-attachment:local;
+}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:11px 16px;min-height:44px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn-mini{background:transparent;border:1px solid var(--line);color:var(--ink-2);border-radius:8px;padding:3px 9px;font-size:.78rem;min-height:30px;cursor:pointer}
+.btn-mini.peligro{color:var(--debt);border-color:var(--debt)}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-align:left}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grow{flex:1 1 150px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pill{display:inline-block;font-size:.7rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 7px;white-space:nowrap}
+.pill-venta{background:var(--ok-bg);color:var(--ok)}
+.pill-fiado{background:var(--debt-bg);color:var(--debt)}
+.pill-pago{background:var(--accent-soft);color:var(--accent)}
+.pill-egreso{background:var(--warn-bg);color:var(--warn)}
+.aviso{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:.85rem}
+.aviso.err{background:var(--debt-bg);color:var(--debt)}
+.resumen-pv{font-weight:600}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.debe{color:var(--debt)} .favor{color:var(--ok)} .egr{color:var(--warn)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--bg);border-radius:10px;padding:4px}
+.seg button{border:0;background:transparent;border-radius:8px;padding:9px 6px;font-weight:600;color:var(--ink-2);min-height:42px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chipb{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:7px 13px;font-size:.85rem;min-height:38px;cursor:pointer}
+.chipb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+/* ---- libreta: 4 columnas en pantallas anchas, tarjetas en el celular ---- */
+.campos{display:grid;gap:12px;grid-template-columns:1fr}
+.imp-wrap{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.imp-wrap:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.imp-wrap span{padding:0 4px 0 12px;font-weight:700;color:var(--ink-2);white-space:nowrap}
+.imp-wrap span.neg{color:var(--warn)}
+.imp-wrap input{border:0;border-radius:0;outline:0;font-family:var(--f-display);font-weight:700;font-size:1.25rem;padding-left:6px}
+@media (min-width:720px){
+  .campos{grid-template-columns:2.2fr 1.1fr 1.5fr 2fr;align-items:start}
+}
+.lib-head{display:none;gap:12px;padding:0 12px 6px;font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2)}
+.lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.lib-row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:5px 12px;
+  grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"art imp" "med med" "det det"}
+.lib-row.anulado{opacity:.55}
+.lib-row.anulado .c-art b,.lib-row.anulado .monto{text-decoration:line-through}
+.c-art{grid-area:art;min-width:0;display:flex;flex-direction:column;gap:3px}
+.c-imp{grid-area:imp;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.c-med{grid-area:med;min-width:0;font-size:.85rem}
+.c-det{grid-area:det;min-width:0;font-size:.85rem;display:flex;flex-direction:column;gap:5px}
+.c-art b{overflow-wrap:anywhere}
+.l-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.l-meta{font-size:.76rem;color:var(--ink-2);overflow-wrap:anywhere}
+.l-det{overflow-wrap:anywhere;white-space:pre-wrap}
+.acciones{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.monto{font-family:var(--f-display);font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.monto-fiado{color:var(--debt)} .monto-pago{color:var(--accent)} .monto-egreso{color:var(--warn)}
+.conf{display:flex;gap:4px;align-items:center;font-size:.78rem}
+@media (min-width:720px){
+  .lib-head{display:grid;grid-template-columns:2.2fr 1.1fr 1.5fr 2fr}
+  .lib-row{grid-template-columns:2.2fr 1.1fr 1.5fr 2fr;grid-template-areas:"art imp med det"}
+  .c-imp{text-align:left;align-items:flex-start}
+}
+.dia-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:8px 0 2px;font-size:.85rem;color:var(--ink-2)}
+.dia-h b{font-family:var(--f-display);font-size:.95rem;color:var(--ink);text-transform:capitalize}
+.cuenta{display:grid;grid-template-columns:1fr auto;gap:2px 12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer}
+.cuenta-n{font-weight:600;overflow-wrap:anywhere}
+.cuenta-s{grid-column:1;font-size:.78rem;color:var(--ink-2)}
+.cuenta-m{grid-row:1 / span 2;grid-column:2;align-self:center;font-family:var(--f-display);font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums}
+.saldo-grande{font-family:var(--f-display);font-weight:700;font-size:2rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi small{display:block;color:var(--ink-2);font-size:.78rem}
+.kpi b{font-family:var(--f-display);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.kpi-main{grid-column:1 / -1}
+.kpi-main b{font-size:2rem}
+.kv{display:flex;flex-direction:column}
+.kv div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line)}
+.kv div:first-child{border-top:0}
+.kv .tot{font-weight:700}
+.kv .sub{padding-left:14px;color:var(--ink-2);font-size:.88rem}
+.kv .hl{background:var(--accent-soft);border-radius:8px;padding-left:8px;padding-right:8px;border-top:0;margin-top:4px}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end}
+.dia{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.dia .val{font-size:.66rem;color:var(--ink-2);white-space:nowrap}
+.barra{height:96px;width:100%;display:flex;flex-direction:column;justify-content:flex-end;border-radius:6px 6px 0 0;overflow:hidden;background:var(--bg)}
+.barra i{display:block;width:100%}
+.b-v{background:var(--accent)} .b-f{background:var(--debt)}
+.dia .l{font-size:.7rem;color:var(--ink-2);text-align:center;line-height:1.15}
+.leyenda{display:flex;gap:14px;font-size:.78rem;color:var(--ink-2);flex-wrap:wrap}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.top-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.top-lista li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.top-lista li:first-child{border-top:0}
+.top-lista li span:first-child{min-width:0;overflow-wrap:anywhere}
+.tabla{width:100%;border-collapse:collapse;font-size:.86rem}
+.tabla th,.tabla td{padding:7px 6px;text-align:right;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.tabla th:first-child,.tabla td:first-child{text-align:left;overflow-wrap:anywhere}
+.tabla thead th{border-top:0;font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.scroll-x{overflow-x:auto}
+.vacio{text-align:center;color:var(--ink-2);padding:26px 12px;border:1px dashed var(--line);border-radius:12px}
+.vacio b{display:block;color:var(--ink);font-family:var(--f-display);font-size:1.05rem;margin-bottom:4px}
+details.card>summary{cursor:pointer;font-weight:600;font-family:var(--f-display);list-style:none}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"▾";float:right;color:var(--ink-2)}
+details.card[open]>summary{margin-bottom:12px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.tabs-in{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;max-width:860px;margin:0 auto}
+.tab{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;color:var(--ink-2);font-size:.72rem;font-weight:500;padding:6px 2px;min-height:50px;border-radius:10px;cursor:pointer}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--accent);background:var(--accent-soft);font-weight:600}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.88rem;max-width:min(92vw,520px);z-index:60;box-shadow:0 4px 18px rgba(0,0,0,.25)}
+.toast.err{background:var(--debt);color:#fff}
+.setup,.modal{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;
+  padding-top:calc(24px + env(safe-area-inset-top,0px));
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px))}
+.modal{z-index:55}
+.yo{display:inline-flex;align-items:center;gap:6px;max-width:150px}
+.yo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-cambio{font-size:.8rem;border-top:1px solid var(--line);padding:8px 0;overflow-wrap:anywhere}
+@media (prefers-reduced-motion: no-preference){ .barra i{transition:height .25s ease} }
+
+/* ---- distribución por responsable ---- */
+.check{display:flex;gap:8px;align-items:center;font-size:.9rem}
+.check input{width:20px;height:20px}
+.d-cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;position:sticky;top:0;z-index:6;background:var(--surface);padding:4px 0}
+.d-col{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 6px;text-align:left;font:inherit;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:2px}
+.d-col b{font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d-col small{font-size:.7rem;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-col .neto{font-weight:700;font-size:.92rem}
+.d-col[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);background:var(--accent-soft)}
+.d-col.over{outline:3px dashed var(--accent);outline-offset:1px}
+.d-col.pend{border-style:dashed}
+.d-listas{display:block}
+.d-lista{list-style:none;margin:0;padding:0;display:none;flex-direction:column;gap:8px}
+.d-lista.on{display:flex}
+.d-card{border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 30px;background:var(--surface);position:relative;display:flex;flex-direction:column;gap:6px}
+.d-card.anulada{opacity:.5}
+.d-grip{position:absolute;left:0;top:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:center;color:var(--ink-2);touch-action:none;cursor:grab;user-select:none;font-size:1.1rem}
+.d-t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.d-t b{overflow-wrap:anywhere}
+.d-btns{display:flex;flex-wrap:wrap;gap:6px}
+.d-btns .btn-mini{min-height:34px}
+.d-btns .sug{border-color:var(--accent);color:var(--accent);font-weight:600}
+.d-ghost{position:fixed;z-index:90;pointer-events:none;opacity:.92;box-shadow:0 8px 24px rgba(0,0,0,.25);width:min(300px,80vw)}
+.d-aviso{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 10px;font-size:.86rem}
+.d-bloq{background:var(--accent-soft);border-radius:8px;padding:8px 10px;font-size:.86rem}
+.tabla.mini td,.tabla.mini th{padding:5px 6px;white-space:nowrap}
+@media (min-width:720px){
+  .d-listas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:start}
+  .d-lista{display:flex}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>La Cresta Dorada</h1>
+      <p class="estado" id="estado" data-s="warn"><span class="dot"></span><span id="estadoTxt">Conectando…</span></p>
+    </div>
+    <div class="row" style="gap:8px">
+      <div class="chip-deuda" id="chipDeuda" hidden>Te deben<b id="chipMonto"></b></div>
+      <button class="btn-mini yo" type="button" data-act="ajustes" aria-label="Ajustes y datos de este teléfono"><span id="yoNombre"></span><span aria-hidden="true">⚙</span></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= ANOTAR ================= -->
+    <section id="v-anotar" class="panel" data-view="anotar">
+      <form id="formOp" class="card stack" autocomplete="off" novalidate>
+        <div class="row" style="flex-wrap:nowrap;gap:8px">
+          <div class="seg grow" role="group" aria-label="Tipo de operación">
+            <button type="button" data-act="optipo" data-v="venta" aria-pressed="true">Venta</button>
+            <button type="button" data-act="optipo" data-v="egreso" aria-pressed="false">Egreso</button>
+            <button type="button" data-act="optipo" data-v="cobro" aria-pressed="false">Cobro de deuda</button>
+          </div>
+          <button class="btn-mini" type="button" id="btnRepetir" data-act="repetir" title="Repetir artículo, medio y categoría de tu última operación" style="flex:none">↻ Repetir</button>
+        </div>
+        <div class="campos">
+          <div>
+            <label class="lbl" for="oArt">Artículo</label>
+            <input id="oArt" type="text" list="dlArt" autocapitalize="sentences" enterkeyhint="next" placeholder="Ej.: Supremas de pollo 1 kg">
+          </div>
+          <div>
+            <label class="lbl" for="oImp">Importe ($ ARS)</label>
+            <div class="imp-wrap"><span id="oPref">$</span><input id="oImp" type="text" inputmode="decimal" enterkeyhint="done" placeholder="0" autocomplete="off"></div>
+          </div>
+          <div>
+            <span class="lbl" id="lblMedio">Medio de pago</span>
+            <div class="chips" id="oMedios" role="group" aria-labelledby="lblMedio"></div>
+          </div>
+          <div>
+            <label class="lbl" for="oDet" id="lblDet">Detalles <span class="muted">(opcional)</span></label>
+            <textarea id="oDet" rows="1" placeholder="Observaciones…"></textarea>
+          </div>
+        </div>
+
+        <div id="bloqueEgreso" class="stack" hidden>
+          <div class="grid2">
+            <div><label class="lbl" for="oSub">Tipo de egreso</label><select id="oSub"></select></div>
+            <div id="bloqueRetiro"><label class="lbl" for="oRetiro" id="lblRetiro">Persona responsable</label><select id="oRetiro"></select></div>
+          </div>
+          <p class="small muted" id="hintEgreso"></p>
+        </div>
+
+        <div id="bloqueTransf" class="stack" hidden>
+          <div class="grid2">
+            <div id="wTitular"><label class="lbl" for="oTitular">Pagó <span class="muted">(opcional)</span></label><input id="oTitular" type="text" placeholder="Nombre de quien pagó"></div>
+            <div><label class="lbl" for="oCuenta" id="lblCuenta">Cuenta receptora</label><select id="oCuenta"></select></div>
+          </div>
+        </div>
+
+        <div id="bloqueCliente" class="stack" hidden>
+          <div>
+            <label class="lbl" for="oCliente">Cliente</label>
+            <div class="row" style="flex-wrap:nowrap">
+              <input id="oCliente" type="text" list="dlClientes" placeholder="Nombre y apellido" class="grow">
+              <button class="btn-mini" type="button" data-act="sinNombre" id="btnSinNombre">Sin nombre aún</button>
+            </div>
+            <p class="small muted" id="hintSaldo" style="margin-top:6px"></p>
+          </div>
+          <div id="bloqueRecibido" class="stack">
+            <div class="grid2">
+              <div><label class="lbl" for="oRec">Recibido ahora <span class="muted">(pago parcial)</span></label><input id="oRec" type="text" inputmode="decimal" placeholder="0"></div>
+              <div><label class="lbl" for="oRecMedio">Medio de lo recibido</label><select id="oRecMedio"></select></div>
+            </div>
+            <p class="small" id="txtPend"></p>
+          </div>
+        </div>
+
+        <div>
+          <label class="lbl" for="oCat">Categoría</label><select id="oCat"></select>
+          <select id="oResp" hidden aria-hidden="true"></select>
+        </div>
+        <p class="aviso err" id="oError" hidden></p>
+        <button class="btn" type="submit" id="btnAgregar">Agregar</button>
+        <p class="small muted">Registra: <b id="yoReg"></b> (identificado automáticamente). El formulario queda listo para la siguiente.</p>
+      </form>
+
+      <div>
+        <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2>Libreta de hoy</h2><span class="small muted num" id="hoyResumen"></span></div>
+        <div class="lib-head" aria-hidden="true"><span>Artículo</span><span>Importe ($ ARS)</span><span>Medio de pago</span><span>Detalles</span></div>
+        <ul class="lista" id="hoyLista"></ul>
+      </div>
+
+      <details class="card" id="detTexto">
+        <summary>Pegar texto o chat de WhatsApp</summary>
+        <div class="stack">
+          <div>
+            <label class="lbl" for="entrada">Anotá como en el chat</label>
+            <textarea id="entrada" class="hoja" rows="8" spellcheck="false" autocomplete="off"
+              placeholder="Supremas de pollo 1kg $9000&#10;Tortillas X5 unidades $1000&#10;Paquete de papel higiénico $2500 (alias Ernesto Ramírez)"></textarea>
+          </div>
+          <p class="small muted">Una línea es una venta. Para un fiado, escribí lo que se lleva y cerrá con <b>Nombre debe</b>. Para un pago, <b>Nombre pagó $3000</b>. Separá anotaciones con una línea en blanco. Si pegás el chat exportado de WhatsApp, cada mensaje conserva su fecha y quién lo escribió; lo que ya cargaste no se duplica.</p>
+          <div class="row">
+            <div class="grow">
+              <label class="lbl" for="fecha">Fecha de lo que anotás</label>
+              <input type="date" id="fecha">
+            </div>
+            <button class="btn btn-ghost" type="button" data-act="ejemplo">Probar con un ejemplo</button>
+          </div>
+          <div id="preview" class="stack"></div>
+          <button class="btn" type="button" id="btnGuardar" data-act="guardar" disabled>Guardar</button>
+        </div>
+      </details>
+    </section>
+
+    <!-- ================= CUENTAS ================= -->
+    <section id="v-cuentas" class="panel" data-view="cuentas" hidden>
+      <div id="cuentasLista" class="panel">
+        <div>
+          <h2>Cuentas corrientes</h2>
+          <p class="muted small" id="cuentasResumen"></p>
+        </div>
+        <input type="search" id="qCuentas" placeholder="Buscar cliente" autocomplete="off" aria-label="Buscar cliente">
+        <div id="cuentasItems" class="stack"></div>
+      </div>
+      <div id="cuentaDetalle" class="panel" hidden>
+        <div class="row" style="justify-content:space-between">
+          <button class="btn-mini" type="button" data-act="volver">← Cuentas</button>
+          <div class="row" style="gap:6px">
+            <button class="btn-mini" type="button" data-act="renombrar">Cambiar nombre</button>
+            <button class="btn-mini" type="button" data-act="unificar">Unificar con otra cuenta</button>
+          </div>
+        </div>
+        <form id="formNombre" class="row" hidden>
+          <input class="grow" id="inNombre" type="text" aria-label="Nombre del cliente" autocomplete="off">
+          <button class="btn" type="submit">Guardar nombre</button>
+        </form>
+        <div id="bloqueUnificar" class="card stack" hidden>
+          <p class="small">Todos los movimientos y el saldo de esta cuenta pasan a la cuenta que elijas. La cuenta actual queda oculta y el historial se conserva.</p>
+          <select id="selUnificar" aria-label="Cuenta de destino"></select>
+          <div class="row"><button class="btn" type="button" data-act="unificarOk">Unificar</button><button class="btn btn-ghost" type="button" data-act="unificar">Cancelar</button></div>
+        </div>
+        <div>
+          <h2 id="detNombre"></h2>
+          <p class="saldo-grande" id="detSaldo"></p>
+          <p class="muted small" id="detSub"></p>
+          <p class="aviso" id="detDesvio" hidden></p>
+        </div>
+        <form class="card stack" id="formManual" autocomplete="off">
+          <div class="seg" role="group" aria-label="Tipo de movimiento">
+            <button type="button" data-act="modo" data-v="fiado" aria-pressed="true">Fiado</button>
+            <button type="button" data-act="modo" data-v="pago" aria-pressed="false">Pago</button>
+          </div>
+          <div id="campoDetalle">
+            <label class="lbl" for="mDetalle">Qué se llevó</label>
+            <input id="mDetalle" type="text" placeholder="Ej.: Pollo entero x2, gaseosa">
+          </div>
+          <div class="row">
+            <div class="grow">
+              <label class="lbl" for="mMonto">Monto</label>
+              <input id="mMonto" type="text" inputmode="decimal" placeholder="$ 0">
+            </div>
+            <div class="grow" id="campoMedio" hidden>
+              <label class="lbl" for="mMedio">Cómo pagó</label>
+              <select id="mMedio"></select>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn" type="submit" id="btnManual">Anotar fiado</button>
+            <button class="btn btn-ghost" type="button" id="btnSaldar" data-act="saldar" hidden>Saldar todo</button>
+          </div>
+        </form>
+        <div class="card stack">
+          <label class="lbl" for="cliObs">Observaciones de la cuenta</label>
+          <textarea id="cliObs" rows="2" placeholder="Ej.: paga los viernes, entregar en la casa de al lado…"></textarea>
+          <button class="btn btn-ghost" type="button" data-act="guardarObs">Guardar observaciones</button>
+        </div>
+        <div>
+          <h3 style="margin-bottom:8px">Historial de la cuenta</h3>
+          <ul class="lista" id="detMovs"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CAJA ================= -->
+    <section id="v-caja" class="panel" data-view="caja" hidden>
+      <h2>Cierre de caja</h2>
+      <div class="card"><label class="lbl" for="cDia">Día</label><input type="date" id="cDia"></div>
+      <div id="distrib" class="card stack"></div>
+      <div class="card stack">
+        <h3>B. Conciliación de caja</h3>
+        <p class="small muted" style="margin-top:-4px">Cuánto dinero entró y salió de verdad. Es independiente de a quién se atribuye cada movimiento.</p>
+        <div><label class="lbl" for="cFondo">Fondo inicial ($)</label><input id="cFondo" type="text" inputmode="decimal" placeholder="0"></div>
+        <div id="cajaRes" class="stack"></div>
+        <div>
+          <label class="lbl" for="cContado">Efectivo contado ($)</label>
+          <input id="cContado" type="text" inputmode="decimal" placeholder="Contá el efectivo y escribilo acá">
+        </div>
+        <div class="kpi" id="cajaDif"></div>
+        <div>
+          <label class="lbl" for="cNota">Nota <span class="muted">(opcional)</span></label>
+          <textarea id="cNota" rows="2" placeholder="Ej.: faltó vuelto, se pagó el flete…"></textarea>
+        </div>
+        <p class="aviso err" id="cError" hidden></p>
+        <p class="small" id="cEstadoCierre"></p>
+        <button class="btn" type="button" id="btnCerrar" data-act="cerrarCaja">Cerrar caja</button>
+        <button class="btn btn-ghost" type="button" id="btnIncompleto" data-act="cerrarIncompleto">Guardar cierre incompleto</button>
+        <p class="small muted">Al cerrar se guarda una foto del cálculo y de la distribución. El cierre definitivo exige asignar todos los movimientos; si todavía no se puede, guardá un cierre incompleto y seguí después. Los cierres no se modifican: lo posterior se corrige con una rectificación.</p>
+      </div>
+      <div>
+        <h3 style="margin-bottom:8px">Cierres anteriores</h3>
+        <div id="cierresLista" class="stack"></div>
+      </div>
+    </section>
+
+    <!-- ================= HISTORIAL ================= -->
+    <section id="v-historial" class="panel" data-view="historial" hidden>
+      <h2>Historial</h2>
+      <input type="search" id="qHist" placeholder="Buscar artículo, cliente, alias o detalle" autocomplete="off" aria-label="Buscar en el historial">
+      <details class="card" id="detFiltros">
+        <summary>Filtros</summary>
+        <div class="stack">
+          <div class="grid2">
+            <div><label class="lbl" for="hDesde">Desde</label><input type="date" id="hDesde"></div>
+            <div><label class="lbl" for="hHasta">Hasta</label><input type="date" id="hHasta"></div>
+          </div>
+          <div class="grid2">
+            <div><label class="lbl" for="hTipo">Tipo</label>
+              <select id="hTipo">
+                <option value="todo">Todo</option><option value="venta">Ventas</option><option value="ingreso">Ingresos de caja</option>
+                <option value="egreso">Egresos</option><option value="retiro">Retiros personales</option>
+                <option value="cc">Cuentas corrientes</option><option value="fiado">Fiados</option><option value="pago">Cobros y pagos</option>
+                <option value="anulado">Anuladas</option>
+              </select></div>
+            <div><label class="lbl" for="hMedio">Medio de pago</label><select id="hMedio"></select></div>
+          </div>
+          <div class="grid2">
+            <div><label class="lbl" for="hResp">Responsable</label><select id="hResp"></select></div>
+            <div><label class="lbl" for="hCat">Categoría</label><select id="hCat"></select></div>
+          </div>
+          <button class="btn btn-ghost" type="button" data-act="limpiarFiltros">Quitar filtros</button>
+        </div>
+      </details>
+      <p class="small muted" id="hInfo"></p>
+      <div class="lib-head" aria-hidden="true"><span>Artículo</span><span>Importe ($ ARS)</span><span>Medio de pago</span><span>Detalles</span></div>
+      <div id="histItems" class="stack"></div>
+    </section>
+
+    <!-- ================= RESUMEN ================= -->
+    <section id="v-resumen" class="panel" data-view="resumen" hidden>
+      <h2>Resumen</h2>
+      <div class="seg" role="group" aria-label="Período">
+        <button type="button" data-act="periodo" data-v="hoy" aria-pressed="true">Hoy</button>
+        <button type="button" data-act="periodo" data-v="7" aria-pressed="false">7 días</button>
+        <button type="button" data-act="periodo" data-v="mes" aria-pressed="false">Este mes</button>
+      </div>
+      <div id="resItems" class="panel"></div>
+    </section>
+
+    <!-- ================= AJUSTES ================= -->
+    <section id="v-ajustes" class="panel" data-view="ajustes" hidden>
+      <div class="row" style="justify-content:space-between">
+        <h2>Ajustes</h2>
+        <button class="btn-mini" type="button" data-act="cerrarAjustes">← Volver</button>
+      </div>
+      <form id="formYo" class="card stack" autocomplete="off">
+        <h3>Tu perfil</h3>
+        <label class="lbl" for="inYo">Tu nombre</label>
+        <input id="inYo" type="text" maxlength="30">
+        <button class="btn" type="submit">Guardar nombre</button>
+        <p class="small muted">Tu perfil queda guardado en la base y vinculado a la sesión de este teléfono: no hace falta elegir tu nombre en cada operación.</p>
+        <label class="check"><input type="checkbox" id="inRecordar"> Recordar mi último medio de pago y categoría</label>
+        <h3 style="margin-top:6px">Personas con acceso</h3>
+        <div id="listaPerfiles" class="stack"></div>
+        <p class="small muted">Para sumar a Mamá: mandale el enlace de invitación (más abajo) y que escriba su nombre al abrirlo.</p>
+      </form>
+      <form id="formCfg" class="card stack" autocomplete="off">
+        <h3>Responsables y cuentas</h3>
+        <p class="small muted">Las tres personas entre las que se distribuye la caja. Los nombres se pueden cambiar.</p>
+        <div id="cfgResp" class="stack"></div>
+        <h3 style="margin-top:6px">Cuentas receptoras de transferencias</h3>
+        <div id="cfgCuentas" class="stack"></div>
+        <div class="row"><input id="cfgNueva" class="grow" type="text" placeholder="Agregar otra cuenta"><button class="btn btn-ghost" type="button" data-act="cfgAgregar">Agregar</button></div>
+        <button class="btn" type="submit">Guardar</button>
+      </form>
+      <div class="card stack">
+        <h3>Copia de seguridad</h3>
+        <p class="small muted">Descarga todos tus datos al teléfono. Hacela cada tanto y guardá el archivo en Drive o mandátelo por WhatsApp.</p>
+        <div class="row">
+          <button class="btn" type="button" data-act="exportar" data-v="json">Descargar copia completa (JSON)</button>
+        </div>
+        <div class="row">
+          <button class="btn btn-ghost" type="button" data-act="exportar" data-v="csv-mov">CSV de movimientos</button>
+          <button class="btn btn-ghost" type="button" data-act="exportar" data-v="csv-cli">CSV de clientes</button>
+          <button class="btn btn-ghost" type="button" data-act="exportar" data-v="csv-cie">CSV de cierres</button>
+        </div>
+        <p class="small" id="bkEstado" hidden></p>
+        <h3 style="margin-top:6px">Restaurar desde una copia</h3>
+        <p class="small muted">Sirve para recuperar datos o pasarlos a otro proyecto. Los movimientos con el mismo identificador se reemplazan; nada se duplica.</p>
+        <input type="file" id="bkArchivo" accept="application/json,.json" aria-label="Archivo de copia de seguridad">
+        <div id="bkResumen" class="stack" hidden>
+          <p class="small" id="bkTxt"></p>
+          <button class="btn" type="button" data-act="restaurar">Restaurar estos datos</button>
+        </div>
+      </div>
+      <div class="card stack">
+        <h3>Invitar a otro celular</h3>
+        <p class="small muted">Mandá este enlace por WhatsApp. Al abrirlo, el otro celular entra al mismo almacén y ve todo en tiempo real. Quien tenga el enlace puede ver y anotar, así que compartilo solo con gente de confianza.</p>
+        <input id="inLink" type="text" readonly aria-label="Enlace de invitación">
+        <button class="btn" type="button" data-act="copiarLink">Copiar enlace</button>
+      </div>
+      <div class="card stack" id="cardInstalar" hidden>
+        <h3>Instalar en este celular</h3>
+        <p class="small muted">Agregá la app a la pantalla de inicio para abrirla a pantalla completa.</p>
+        <button class="btn" type="button" data-act="instalar">Instalar app</button>
+      </div>
+      <div class="card stack">
+        <h3>Código del local</h3>
+        <p class="num" id="txtCodigo" style="overflow-wrap:anywhere;margin:0"></p>
+        <p class="small muted">Es la llave de tus datos. Guardalo en un lugar seguro: con él podés entrar desde un teléfono nuevo.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<datalist id="dlArt"></datalist>
+<datalist id="dlClientes"></datalist>
+
+<nav class="tabs" aria-label="Secciones">
+  <div class="tabs-in">
+    <button class="tab" type="button" data-act="tab" data-v="anotar" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>Anotar</button>
+    <button class="tab" type="button" data-act="tab" data-v="cuentas">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4z"/><path d="M9 9h6M9 13h6"/></svg>Cuentas</button>
+    <button class="tab" type="button" data-act="tab" data-v="caja">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>Caja</button>
+    <button class="tab" type="button" data-act="tab" data-v="historial">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Historial</button>
+    <button class="tab" type="button" data-act="tab" data-v="resumen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Resumen</button>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- Editar / rectificar un movimiento -->
+<section id="modalEdit" class="modal" hidden aria-label="Editar movimiento">
+  <div class="app stack">
+    <div class="row" style="justify-content:space-between"><h2>Editar movimiento</h2><button class="btn-mini" type="button" data-act="editCerrar">Cerrar</button></div>
+    <p class="small muted" id="eInfo"></p>
+    <form id="formEdit" class="card stack" autocomplete="off" novalidate>
+      <div><label class="lbl" for="eDesc">Artículo</label><input id="eDesc" type="text" list="dlArt"></div>
+      <div class="grid2">
+        <div><label class="lbl" for="eImp">Importe ($ ARS)</label><div class="imp-wrap"><span id="ePref">$</span><input id="eImp" type="text" inputmode="decimal"></div></div>
+        <div><label class="lbl" for="eMedio">Medio de pago</label><select id="eMedio"></select></div>
+      </div>
+      <div><label class="lbl" for="eDet">Detalles</label><textarea id="eDet" rows="2"></textarea></div>
+      <div id="eBloqueEgreso" class="grid2" hidden>
+        <div><label class="lbl" for="eSub">Tipo de egreso</label><select id="eSub"></select></div>
+        <div><label class="lbl" for="eRetiro">Persona responsable</label><select id="eRetiro"></select></div>
+      </div>
+      <div id="eBloqueTransf" class="stack" hidden>
+        <div class="grid2">
+          <div><label class="lbl" for="eTitular">Pagó</label><input id="eTitular" type="text"></div>
+          <div><label class="lbl" for="eCuenta">Cuenta</label><select id="eCuenta"></select></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div hidden><select id="eResp"></select></div>
+        <div><label class="lbl" for="eCat">Categoría</label><select id="eCat"></select></div>
+      </div>
+      <p class="aviso err" id="eError" hidden></p>
+      <div class="row"><button class="btn" type="submit">Guardar cambios</button><button class="btn btn-ghost" type="button" data-act="editCerrar">Cancelar</button></div>
+      <p class="small muted">Los valores anteriores quedan guardados en el historial de cambios de este movimiento.</p>
+    </form>
+    <div class="card"><h3 style="margin-bottom:6px">Historial de cambios</h3><div id="eHist"></div></div>
+  </div>
+</section>
+
+<section id="modalSplit" class="modal" hidden aria-label="Dividir movimiento">
+  <div class="app stack">
+    <div class="row" style="justify-content:space-between"><h2>Dividir movimiento</h2><button class="btn-mini" type="button" data-act="splitCerrar">Cerrar</button></div>
+    <p class="small muted" id="sInfo"></p>
+    <form id="formSplit" class="card stack" autocomplete="off" novalidate>
+      <div id="sFilas" class="stack"></div>
+      <p class="small" id="sSuma"></p>
+      <button class="btn btn-ghost" type="button" data-act="splitIguales">Partes iguales entre los marcados</button>
+      <p class="aviso err" id="sError" hidden></p>
+      <div class="row"><button class="btn" type="submit" id="sOk">Guardar división</button><button class="btn btn-ghost" type="button" data-act="splitCerrar">Cancelar</button></div>
+      <p class="small muted">La suma de las partes tiene que ser exactamente el importe original. El total no se duplica: cada parte apunta al movimiento original.</p>
+    </form>
+  </div>
+</section>
+
+<section id="setup" class="setup" hidden aria-label="Primer ingreso">
+  <div class="app stack">
+    <h1>La Cresta Dorada</h1>
+    <p class="muted">Elegí quién sos. Se hace una sola vez: tu perfil queda guardado en la base y este teléfono te reconoce solo.</p>
+    <form id="formSetup" class="stack" autocomplete="off">
+      <div>
+        <label class="lbl" for="suNombre">Tu nombre</label>
+        <input id="suNombre" type="text" maxlength="30" placeholder="Ej.: Kevin">
+        <div class="chips" style="margin-top:8px"><button type="button" class="chipb" data-act="suNombre" data-v="Kevin">Kevin</button><button type="button" class="chipb" data-act="suNombre" data-v="Ramiro">Ramiro</button><button type="button" class="chipb" data-act="suNombre" data-v="Mamá">Mamá</button></div>
+      </div>
+      <div>
+        <label class="lbl" for="suCodigo">Código del local</label>
+        <input id="suCodigo" type="text" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Pegalo acá o generá uno nuevo">
+      </div>
+      <p class="small muted">Si ya usa la app otra persona, pedile el enlace de invitación: al abrirlo, el código se completa solo. Si sos la primera persona en usarla, generá un código nuevo.</p>
+      <button class="btn btn-ghost" type="button" data-act="generar">Soy el primero: generar código nuevo</button>
+      <p class="aviso" id="suError" hidden></p>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>

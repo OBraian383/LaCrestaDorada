@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Perfiles de personas: cada sesión (teléfono) solo puede crear o modificar el suyo.
+    match /negocios/{codigo}/perfiles/{uid} {
+      allow read: if request.auth != null && codigo.size() >= 16;
+      allow create, update: if request.auth != null && request.auth.uid == uid && codigo.size() >= 16;
+      allow delete: if false;
+    }
+    // Resto de los datos: con sesión y el código largo del negocio. Nada se borra.
+    match /negocios/{codigo}/{coleccion}/{id} {
+      allow read, create, update: if request.auth != null && codigo.size() >= 16 && coleccion != 'perfiles';
+      allow delete: if false;
+    }
+  }
+}
